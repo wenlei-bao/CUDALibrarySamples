@@ -36,6 +36,7 @@
 #include <cublasLt.h>
 #include <cuda_fp8.h>
 #include <cuda_runtime_api.h>
+#include <cuda_runtime.h>
 
 inline void checkCudaStatus(cudaError_t status) {
     if (status != cudaSuccess) {
@@ -51,6 +52,32 @@ inline void checkCublasStatus(cublasStatus_t status) {
     }
 }
 
+struct GPUTimer {
+    GPUTimer() {
+        cudaEventCreate(&start_);
+        cudaEventCreate(&stop_);
+        cudaEventRecord(start_, 0);
+    }
+    ~GPUTimer() {
+        cudaEventDestroy(start_);
+        cudaEventDestroy(stop_);
+    }
+
+    void start() {
+        cudaEventRecord(start_, 0);
+    }
+
+    float seconds() {
+        cudaEventRecord(stop_, 0);
+        cudaEventSynchronize(stop_);
+        float time;
+        cudaEventElapsedTime(&time, start_, stop_);
+        return time * 1e-3;
+    }
+
+    cudaEvent_t start_, stop_;
+};
+
 template <typename InType, typename OutType = InType, typename ComputeType = OutType>
 struct TestBench {
     using SampleRunner = std::function<void()>;
@@ -58,7 +85,7 @@ struct TestBench {
     TestBench(int m, int n, int k,
             ComputeType alpha = ComputeType{0.0f}, ComputeType beta = ComputeType{0.0f},
             size_t workspaceSize = 1024 * 1024 * 4, int N = 1,
-            ComputeType Ascale = ComputeType{2.0f}, ComputeType Bscale = ComputeType{0.5f},
+            ComputeType Ascale = ComputeType{1.0f}, ComputeType Bscale = ComputeType{1.0f},
             ComputeType Cscale = ComputeType{1.0f}, ComputeType Dscale = ComputeType{1.0f}) :
         m(m), n(n), k(k), N(N), alpha(alpha), beta(beta), workspaceSize(workspaceSize), Ahost(m * k * N), Bhost(n * k * N),
         Chost(m * n * N), biasHost(m * N), AscaleHost(Ascale), BscaleHost(Bscale), CscaleHost(Cscale), DscaleHost(Dscale) {
@@ -130,8 +157,17 @@ struct TestBench {
 
     void run(const SampleRunner& runSample) {
         copyDataToDevice();
-
+        // warmup
         runSample();
+
+        // timer
+        GPUTimer timer;
+        timer.start();
+        for (int iter=0; iter<5; ++iter) {
+            runSample();
+        }
+
+        seconds = timer.seconds();
 
         copyDataFromDevice();
         streamSynchronize();
@@ -150,6 +186,7 @@ struct TestBench {
     cublasLtHandle_t ltHandle;
     ComputeType AscaleHost, BscaleHost, CscaleHost, DscaleHost, DamaxHost;
     ComputeType *AscaleDev, *BscaleDev, *CscaleDev, *DscaleDev, *DamaxDev;
+    float seconds = -1.0f;
 };
 
 template <>

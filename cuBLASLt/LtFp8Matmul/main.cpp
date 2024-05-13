@@ -36,7 +36,11 @@
 #include "helpers.h"
 
 int main() {
-    TestBench<__nv_fp8_e4m3, __nv_fp8_e4m3, float> props(64, 128, 256, 2.0f, 0.0f /* ignored */, 32ULL * 1024 * 1024);
+    int M = 4096;
+    int N = 12288;
+    int K = 1536;
+
+    TestBench<__nv_fp8_e4m3, __nv_fp8_e4m3, float> props(M, N, K, 1.0f, 0.0f /* ignored */, 32ULL * 1024 * 1024);
 
     props.run([&props] {
         LtFp8Matmul(props.ltHandle,
@@ -58,6 +62,14 @@ int main() {
                     props.workspace,
                     props.workspaceSize);
     });
+
+    printf("timer: %f ms\n", props.seconds * 1000);
+    printf("timer: %f s\n", props.seconds);
+    float product = float(M) * float(N) * float(K);
+    printf("product: %f \n", product);
+    float gflops = 2.0f * product / float(1.0e9) / props.seconds;
+    printf("GFLOPS: %f\n", gflops);
+    printf("TFLOPS: %f\n", gflops / 1000.f);
 
     return 0;
 }
