@@ -79,6 +79,9 @@ void LtFp8Matmul(cublasLtHandle_t ltHandle,
     checkCublasStatus(cublasLtMatmulDescSetAttribute(operationDesc, CUBLASLT_MATMUL_DESC_D_SCALE_POINTER, &d_scale, sizeof(d_scale)));
     checkCublasStatus(cublasLtMatmulDescSetAttribute(operationDesc, CUBLASLT_MATMUL_DESC_AMAX_D_POINTER, &amax_d, sizeof(amax_d)));
 
+    int8_t fastacc = 1;
+    checkCublasStatus(cublasLtMatmulDescSetAttribute(operationDesc, CUBLASLT_MATMUL_DESC_FAST_ACCUM, &fastacc, sizeof(fastacc)));
+
     // create matrix descriptors, we are good with the details here so no need to set any extra attributes
     // table of supported type combinations can be found in the documentation: https://docs.nvidia.com/cuda/cublas/index.html#cublasltmatmul
     checkCublasStatus(cublasLtMatrixLayoutCreate(&Adesc, CUDA_R_8F_E4M3, transa == CUBLAS_OP_N ? m : k, transa == CUBLAS_OP_N ? k : m, lda));
@@ -100,6 +103,8 @@ void LtFp8Matmul(cublasLtHandle_t ltHandle,
         checkCublasStatus(CUBLAS_STATUS_NOT_SUPPORTED);
     }
 
+
+
     checkCublasStatus(cublasLtMatmul(ltHandle,
                                      operationDesc,
                                      alpha,
@@ -116,6 +121,12 @@ void LtFp8Matmul(cublasLtHandle_t ltHandle,
                                      workspace,
                                      workspaceSize,
                                      0));
+
+
+    // size_t returnSize;
+    // int8_t fastacc;
+    // checkCublasStatus(cublasLtMatmulDescGetAttribute(operationDesc, CUBLASLT_MATMUL_DESC_FAST_ACCUM, &fastacc, sizeof(fastacc), &returnSize));
+    // printf("fastacc=%d \n", fastacc);
 
     // descriptors are no longer needed as all GPU work was already enqueued
     if (preference) checkCublasStatus(cublasLtMatmulPreferenceDestroy(preference));
