@@ -53,7 +53,7 @@ void printAlgo(const cublasLtMatmulAlgo_t& algo) {
 int main() {
     int M = 4096;
     int N = 12288;
-    int K = 1536;
+    int K = 12288;
 
     cublasLtMatmulAlgo_t algo;
 
@@ -84,7 +84,7 @@ int main() {
     printf("timer: %f s\n", props.seconds);
     float product = float(M) * float(N) * float(K);
     printf("product: %f \n", product);
-    float gflops = 2.0f * product / float(1.0e9) / props.seconds;
+    float gflops = 2.0f * product * 10/ float(1.0e9) / props.seconds;
     printf("GFLOPS: %f\n", gflops);
     printf("TFLOPS: %f\n", gflops / 1000.f);
 

@@ -163,7 +163,7 @@ struct TestBench {
         // timer
         GPUTimer timer;
         timer.start();
-        for (int iter=0; iter<5; ++iter) {
+        for (int iter=0; iter<10; ++iter) {
             runSample();
         }
 
